@@ -2,8 +2,13 @@ const express = require('express');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
+const authRoutes = require('./routes/auth');
+
 const app = express();
 app.use(express.json());
+
+// Routes
+app.use('/api/auth', authRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
