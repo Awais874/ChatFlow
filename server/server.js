@@ -3,15 +3,25 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
+const verifyToken = require('./middleware/auth');
 
 const app = express();
 app.use(express.json());
 
-// Routes
+// Public routes
 app.use('/api/auth', authRoutes);
 
+// Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
+});
+
+// Protected test route
+app.get('/api/me', verifyToken, (req, res) => {
+  res.json({ 
+    message: 'You are authenticated',
+    userId: req.user.userId 
+  });
 });
 
 const PORT = process.env.PORT || 5000;
