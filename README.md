@@ -11,20 +11,20 @@ proper engineering practices from day one.
 ChatFlow is a lightweight messaging app for small teams and individuals 
 who want a fast, clean alternative to bloated tools like Slack or Teams. 
 No unnecessary features. No onboarding friction. Just open it, log in, 
-and start chatting — in under 60 seconds.
+and start chatting in under 60 seconds.
 
 Built as a solo full-stack project, owned end to end from database 
-schema to real-time socket events to the React UI. You can register an account, log in, and chat with other users in real time. Messages appear instantly on both sides without refreshing the page — just like WhatsApp or Slack.
+schema to real-time socket events to the React UI. You can register an account, log in, and chat with other users in real time. Messages appear instantly on both sides without refreshing the page, just like WhatsApp or Slack.
 
 ---
 
 ## What I used to build it
 
-- **React** — the frontend UI
-- **Node.js + Express** — the backend server and API
-- **MongoDB** — stores users, messages, and conversations
-- **Socket.io** — handles the real-time messaging
-- **JWT + bcrypt** — keeps accounts secure
+- **React** : the frontend UI
+- **Node.js + Express** :  the backend server and API
+- **MongoDB** : stores users, messages, and conversations
+- **Socket.io** : handles the real-time messaging
+- **JWT + bcrypt** : keeps accounts secure
 
 
 
@@ -82,7 +82,7 @@ Then open `http://localhost:5173` in your browser.
 
 ## How I built it
 
-I didn't just write code — I planned it like a real product:
+ I planned it like a real product:
 
 - Wrote a PRD (Product Requirement Document) before touching any code
 - Broke the project into Epics, Stories, and Tasks like a real Jira board
