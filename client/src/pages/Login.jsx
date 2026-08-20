@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../utils/api';
 
 function Login() {
   
@@ -27,7 +28,8 @@ function Login() {
 
     try {
       // Send login request to our Express backend
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      
+        const response = await api.post('/api/auth/login', {
         email,
         password
       });
