@@ -16,9 +16,9 @@ const app = express();
 
 // Then attach middleware to app
 app.use(cors({
-  origin: '*',
+  origin: ['http://localhost:5173', 'https://chat-flow-gold.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  credentials: false
+  credentials: true
 }));
 
 app.use(express.json());
@@ -29,7 +29,7 @@ const server = http.createServer(app);
 // Create Socket.io server from HTTP server
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: ['http://localhost:5173', 'https://chat-flow-gold.vercel.app'],
     methods: ['GET', 'POST']
   }
 });
