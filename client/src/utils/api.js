@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for all API requests
-const BASE_URL = 'http://localhost:5000';;
+const BASE_URL = 'https://chatflow-backend-lj6n.onrender.com';
 
 // Create axios instance with default config
 // Every request made through this instance automatically includes the JWT token in the Authorization header
