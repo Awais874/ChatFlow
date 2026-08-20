@@ -8,8 +8,8 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const conversationRoutes = require('./routes/conversations');
 const verifyToken = require('./middleware/auth');
-const Message = require('./models/Message');
-const Conversation = require('./models/Conversation');
+const Message = require('./models/message');
+const Conversation = require('./models/conversation');
 
 // Create express app FIRST before using it
 const app = express();
@@ -123,7 +123,7 @@ app.get('/api/me', verifyToken, (req, res) => {
 app.get('/api/users/search', verifyToken, async (req, res) => {
   try {
     const { query } = req.query;
-    const User = require('./models/User');
+    const User = require('./models/user');
 
     if (!query) {
       return res.status(400).json({ error: 'Search query is required' });
