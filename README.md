@@ -82,7 +82,7 @@ Then open `http://localhost:5173` in your browser.
 
 ## How I built it
 
-I didn't just write code — I planned it like a real product:
+ I planned it like a real product:
 
 - Wrote a PRD (Product Requirement Document) before touching any code
 - Broke the project into Epics, Stories, and Tasks like a real Jira board
