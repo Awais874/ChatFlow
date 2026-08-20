@@ -118,6 +118,32 @@ app.get('/api/me', verifyToken, (req, res) => {
   });
 });
 
+
+// User search route — used for starting new conversations
+app.get('/api/users/search', verifyToken, async (req, res) => {
+  try {
+    const { query } = req.query;
+    const User = require('./models/User');
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const users = await User.find({
+      _id: { $ne: req.user.userId },
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    }).select('name email avatar status').limit(10);
+
+    res.status(200).json({ users });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 mongoose.connect(process.env.MONGO_URI)

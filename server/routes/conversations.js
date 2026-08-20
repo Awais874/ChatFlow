@@ -7,6 +7,39 @@ const router = express.Router();
 
 
 
+// GET /api/users/search?query=john
+// Search for users by name or email
+// Used in the new conversation modal
+router.get('/users/search', verifyToken, async (req, res) => {
+  try {
+    const { query } = req.query;
+    const User = require('../models/User');
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    // Search by name or email — case insensitive
+    // Exclude the logged in user from results
+    const users = await User.find({
+      _id: { $ne: req.user.userId }, // exclude self
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    }).select('name email avatar status').limit(10);
+
+    res.status(200).json({ users });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+
+
+
 // POST /api/conversations — create a new conversation
 router.post('/', verifyToken, async (req, res) => {
   try {
