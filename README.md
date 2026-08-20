@@ -1,4 +1,4 @@
-# ChatFlow 💬
+# ChatFlow (MERN STACK APP)  💬
 
 A real-time chat app built from scratch by simulating how a real startup 
 team actually works, with a PRD, system design, sprint planning, and 
@@ -45,7 +45,6 @@ schema to real-time socket events to the React UI. You can register an account, 
 
 - Typing indicators ("John is typing...")
 - Online/offline status
-- Start a new conversation from inside the app
 - Profile settings page
 - Deploy it live on the internet
 
