@@ -45,7 +45,6 @@ schema to real-time socket events to the React UI. You can register an account, 
 
 - Typing indicators ("John is typing...")
 - Online/offline status
-- Start a new conversation from inside the app
 - Profile settings page
 - Deploy it live on the internet
 
