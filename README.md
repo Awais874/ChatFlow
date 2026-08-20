@@ -1,4 +1,4 @@
-# ChatFlow 💬
+# ChatFlow (MERN STACK APP)  💬
 
 A real-time chat app built from scratch by simulating how a real startup 
 team actually works, with a PRD, system design, sprint planning, and 
