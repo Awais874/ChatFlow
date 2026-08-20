@@ -17,7 +17,7 @@ const useSocket = () => {
     }
 
     // Create socket connection with JWT token, Token goes in auth so server middleware can verify it
-    socketRef.current = io('http://localhost:5000', {
+    socketRef.current = io('https://chatflow-backend-lj6n.onrender.com', {
       auth: { token }
     });
 
@@ -36,7 +36,7 @@ const useSocket = () => {
       console.log(' Socket connection error:', err.message);
     });
 
-    // Cleanup : disconnect socket when component unmounts. Prevents memory leaks and duplicate connections
+    //  disconnect socket when component unmounts. Prevents memory leaks and duplicate connections
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();

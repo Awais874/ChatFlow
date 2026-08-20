@@ -16,9 +16,9 @@ const app = express();
 
 // Then attach middleware to app
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  credentials: true
+  credentials: false
 }));
 
 app.use(express.json());
@@ -29,7 +29,7 @@ const server = http.createServer(app);
 // Create Socket.io server from HTTP server
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173',
+    origin: '*',
     methods: ['GET', 'POST']
   }
 });
