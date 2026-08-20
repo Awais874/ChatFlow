@@ -2,15 +2,25 @@ const express = require('express');
 const mongoose = require('mongoose');
 const http = require('http');
 const { Server } = require('socket.io');
-const Message = require('./models/Message');
-const Conversation = require('./models/Conversation');
+const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
+const conversationRoutes = require('./routes/conversations');
 const verifyToken = require('./middleware/auth');
+const Message = require('./models/Message');
+const Conversation = require('./models/Conversation');
 
-// Create express app
+// Create express app FIRST before using it
 const app = express();
+
+// Then attach middleware to app
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Create HTTP server from express app
@@ -19,27 +29,10 @@ const server = http.createServer(app);
 // Create Socket.io server from HTTP server
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173', // React dev server port
+    origin: 'http://localhost:5173',
     methods: ['GET', 'POST']
   }
 });
-
-
-// Temporary test route — create a conversation
-app.post('/api/conversations', verifyToken, async (req, res) => {
-  try {
-    const conversation = await Conversation.create({
-      type: 'direct',
-      participants: [req.user.userId],
-      name: 'Test Conversation'
-    });
-    res.status(201).json(conversation);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
 
 // JWT auth middleware for Socket.io
 io.use((socket, next) => {
@@ -52,8 +45,8 @@ io.use((socket, next) => {
   try {
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.user = decoded; // attach user to socket
-    next(); // allow connection
+    socket.user = decoded;
+    next();
   } catch (err) {
     return next(new Error('Invalid or expired token'));
   }
@@ -74,25 +67,21 @@ io.on('connection', (socket) => {
     try {
       const { conversationId, text } = data;
 
-      // Step 1: Validate data
       if (!conversationId || !text) {
         socket.emit('error', { message: 'conversationId and text are required' });
         return;
       }
 
-      // Step 2: Save message to MongoDB
       const message = await Message.create({
         conversationId,
         senderId: socket.user.userId,
         text,
       });
 
-      // Step 3: Update last message in conversation
       await Conversation.findByIdAndUpdate(conversationId, {
         lastMessage: text
       });
 
-      // Step 4: Broadcast to everyone in the room
       io.to(conversationId).emit('newMessage', {
         _id: message._id,
         conversationId,
@@ -114,6 +103,9 @@ io.on('connection', (socket) => {
 
 // REST routes
 app.use('/api/auth', authRoutes);
+app.use('/api/conversations', conversationRoutes);
+
+
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
