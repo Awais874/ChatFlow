@@ -8,7 +8,7 @@ const useSocket = () => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    // Get token from localStorage. same one saved on login
+    // Get token from localStorage. same one saved on loginn
     const token = localStorage.getItem('token');
 
     if (!token) {
