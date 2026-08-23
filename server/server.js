@@ -14,7 +14,7 @@ const Conversation = require('./models/conversation');
 // Create express app FIRST before using it
 const app = express();
 
-// Then attach middleware to app
+// Allow requests from React dev server and Vercel production
 app.use(cors({
   origin: ['http://localhost:5173', 'https://chat-flow-gold.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -26,7 +26,7 @@ app.use(express.json());
 // Create HTTP server from express app
 const server = http.createServer(app);
 
-// Create Socket.io server from HTTP server
+// Create Socket.io server — shares same port as Express
 const io = new Server(server, {
   cors: {
     origin: ['http://localhost:5173', 'https://chat-flow-gold.vercel.app'],
@@ -35,6 +35,7 @@ const io = new Server(server, {
 });
 
 // JWT auth middleware for Socket.io
+// Runs before any socket connection is allowed
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
 
@@ -45,7 +46,7 @@ io.use((socket, next) => {
   try {
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.user = decoded;
+    socket.user = decoded; // attach userId to socket for use in events
     next();
   } catch (err) {
     return next(new Error('Invalid or expired token'));
@@ -56,62 +57,67 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log(`✅ User connected: ${socket.user.userId} | Socket ID: ${socket.id}`);
 
-  // Join conversation room
+  // Join a conversation room so user receives messages for it
   socket.on('joinRoom', (conversationId) => {
     socket.join(conversationId);
     console.log(`User ${socket.user.userId} joined room: ${conversationId}`);
   });
 
-
-
-
   // Typing indicator — broadcast to everyone in room except the sender
-// Not saved to DB — purely real-time
-socket.on('typing', (conversationId) => {
-  socket.to(conversationId).emit('userTyping', {
-    userId: socket.user.userId,
-    conversationId,
+  // Not saved to DB — purely real-time ephemeral event
+  socket.on('typing', (conversationId) => {
+    socket.to(conversationId).emit('userTyping', {
+      userId: socket.user.userId,
+      conversationId,
+    });
   });
-});
 
-// Stop typing — broadcast to everyone in room except the sender
-socket.on('stopTyping', (conversationId) => {
-  socket.to(conversationId).emit('userStoppedTyping', {
-    userId: socket.user.userId,
-    conversationId,
+  // Stop typing — broadcast to everyone in room except the sender
+  socket.on('stopTyping', (conversationId) => {
+    socket.to(conversationId).emit('userStoppedTyping', {
+      userId: socket.user.userId,
+      conversationId,
+    });
   });
-});
 
-
-
-
-
-
-
-  // Send message
+  // Send message — save to MongoDB + broadcast to room
   socket.on('sendMessage', async (data) => {
     try {
       const { conversationId, text } = data;
 
+      // Validate required fields
       if (!conversationId || !text) {
         socket.emit('error', { message: 'conversationId and text are required' });
         return;
       }
 
+      // Save message to MongoDB
       const message = await Message.create({
         conversationId,
         senderId: socket.user.userId,
         text,
       });
 
+      // Update last message preview in conversation
       await Conversation.findByIdAndUpdate(conversationId, {
         lastMessage: text
       });
 
+      // Fetch sender info so frontend can display name and avatar
+      // This ensures real-time messages have the same shape as history messages
+      const User = require('./models/user');
+      const sender = await User.findById(socket.user.userId).select('name email avatar');
+
+      // Broadcast to everyone in the room including sender
       io.to(conversationId).emit('newMessage', {
         _id: message._id,
         conversationId,
-        senderId: socket.user.userId,
+        senderId: {
+          _id: socket.user.userId,
+          name: sender.name,
+          email: sender.email,
+          avatar: sender.avatar,
+        },
         text,
         createdAt: message.createdAt,
       });
@@ -122,6 +128,7 @@ socket.on('stopTyping', (conversationId) => {
     }
   });
 
+  // Clean up on disconnect
   socket.on('disconnect', () => {
     console.log(`❌ User disconnected: ${socket.user.userId}`);
   });
@@ -131,21 +138,20 @@ socket.on('stopTyping', (conversationId) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
 
-
-
+// Health check — used by Render to confirm server is alive
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// Get current logged in user from JWT
 app.get('/api/me', verifyToken, (req, res) => {
-  res.json({ 
+  res.json({
     message: 'You are authenticated',
-    userId: req.user.userId 
+    userId: req.user.userId
   });
 });
 
-
-// User search route — used for starting new conversations
+// Search users by name or email — used in new conversation modal
 app.get('/api/users/search', verifyToken, async (req, res) => {
   try {
     const { query } = req.query;
@@ -155,6 +161,7 @@ app.get('/api/users/search', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
+    // Find users matching name or email, exclude the logged in user
     const users = await User.find({
       _id: { $ne: req.user.userId },
       $or: [
