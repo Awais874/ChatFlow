@@ -42,6 +42,11 @@ function Chat() {
   const [loading, setLoading]                       = useState(false);
   const [sidebarOpen, setSidebarOpen]               = useState(true);
   const [showNewConvModal, setShowNewConvModal]     = useState(false);
+const [typingUsers, setTypingUsers] = useState([]);
+
+// Ref for the typing debounce timer
+const typingTimeoutRef = useRef(null);
+
 
   // Get logged in user from localStorage
   const user = JSON.parse(localStorage.getItem('user'));
@@ -64,9 +69,26 @@ function Chat() {
     socket.on('newMessage', (message) => {
       setMessages((prev) => [...prev, message]);
     });
-    // Remove listener on re-render to prevent duplicates
-    return () => socket.off('newMessage');
-  }, [socket]);
+    
+  // Someone started typing:  add them to typingUsers list
+  socket.on('userTyping', ({ userId }) => {
+    setTypingUsers((prev) => {
+      if (prev.includes(userId)) return prev;
+      return [...prev, userId];
+    });
+  });
+
+  // Someone stopped typing:  remove them from typingUsers list
+  socket.on('userStoppedTyping', ({ userId }) => {
+    setTypingUsers((prev) => prev.filter((id) => id !== userId));
+  });
+
+  return () => {
+    socket.off('newMessage');
+    socket.off('userTyping');
+    socket.off('userStoppedTyping');
+  };
+}, [socket]);
 
   // Auto scroll to bottom on new message
   useEffect(() => {
@@ -83,7 +105,7 @@ function Chat() {
     }
   };
 
-  // Open a conversation — join socket room + load history 
+  // Open a conversation : join socket room + load history 
   const openConversation = async (conv) => {
     setActiveConversation(conv);
     setMessages([]);
@@ -115,6 +137,12 @@ function Chat() {
     });
 
     setNewMessage('');
+// Clear typing indicator when message is sent
+if (socket && activeConversation) {
+  socket.emit('stopTyping', activeConversation._id);
+  clearTimeout(typingTimeoutRef.current);
+}
+
     inputRef.current?.focus();
   };
 
@@ -323,6 +351,27 @@ function Chat() {
                   );
                 })}
 
+
+
+
+{/* Typing indicator — shows when someone else is typing */}
+{typingUsers.length > 0 && (
+  <div style={s.typingIndicator}>
+    <div style={s.typingDots}>
+      <span style={s.dot} />
+      <span style={s.dot} />
+      <span style={s.dot} />
+    </div>
+    <span style={s.typingText}>
+      Someone is typing...
+    </span>
+  </div>
+)}
+
+{/* Invisible anchor for auto-scroll */}
+<div ref={messagesEndRef} />
+
+
                 {/* Invisible anchor for auto-scroll */}
                 <div ref={messagesEndRef} />
               </div>
@@ -334,7 +383,22 @@ function Chat() {
                   rows={1}
                   placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+  setNewMessage(e.target.value);
+
+  // Tell the server this user is typing
+  if (socket && activeConversation) {
+    socket.emit('typing', activeConversation._id);
+
+    // Clear previous timeout
+    clearTimeout(typingTimeoutRef.current);
+
+    // After 2 seconds of no typing, emit stopTyping
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit('stopTyping', activeConversation._id);
+    }, 2000);
+  }
+}}
                   onKeyDown={handleKeyDown}
                   style={s.textarea}
                 />
@@ -487,6 +551,34 @@ const s = {
     fontSize: '18px', display: 'flex', alignItems: 'center',
     justifyContent: 'center', flexShrink: 0,
   },
+
+typingIndicator: {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '8px 4px',
+  marginTop: '4px',
+},
+typingDots: {
+  display: 'flex',
+  gap: '4px',
+  alignItems: 'center',
+},
+dot: {
+  width: '6px',
+  height: '6px',
+  borderRadius: '50%',
+  backgroundColor: '#94a3b8',
+  display: 'inline-block',
+  animation: 'bounce 1.2s infinite',
+},
+typingText: {
+  fontSize: '13px',
+  color: '#94a3b8',
+  fontStyle: 'italic',
+},
+
+
 };
 
 export default Chat;

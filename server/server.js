@@ -62,6 +62,32 @@ io.on('connection', (socket) => {
     console.log(`User ${socket.user.userId} joined room: ${conversationId}`);
   });
 
+
+
+
+  // Typing indicator — broadcast to everyone in room except the sender
+// Not saved to DB — purely real-time
+socket.on('typing', (conversationId) => {
+  socket.to(conversationId).emit('userTyping', {
+    userId: socket.user.userId,
+    conversationId,
+  });
+});
+
+// Stop typing — broadcast to everyone in room except the sender
+socket.on('stopTyping', (conversationId) => {
+  socket.to(conversationId).emit('userStoppedTyping', {
+    userId: socket.user.userId,
+    conversationId,
+  });
+});
+
+
+
+
+
+
+
   // Send message
   socket.on('sendMessage', async (data) => {
     try {

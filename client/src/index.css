@@ -9,3 +9,7 @@ body {
   background-color: #f0f2f5;
   color: #1a1a1a;
 }
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
