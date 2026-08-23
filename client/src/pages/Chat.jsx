@@ -58,15 +58,18 @@ function Chat() {
     fetchConversations();
   }, []);
 
-  // ─── Set up socket listeners once socket connects ────────────────────────
-  useEffect(() => {
-    // Poll until socket is ready — fixes the async connection timing issue
-    const interval = setInterval(() => {
-      const socket = socketRef.current;
-      if (!socket || !socket.connected) return;
+ 
 
-      // Socket is ready — set up all listeners
-      clearInterval(interval);
+useEffect(() => {
+    // Wait for socket to be ready then attach listeners
+    const attachListeners = () => {
+      const socket = socketRef.current;
+      if (!socket) return;
+
+      // Remove any existing listeners first to prevent duplicates
+      socket.off('newMessage');
+      socket.off('userTyping');
+      socket.off('userStoppedTyping');
 
       // New message from server
       socket.on('newMessage', (message) => {
@@ -86,19 +89,34 @@ function Chat() {
       socket.on('userStoppedTyping', ({ userId }) => {
         setTypingUsers((prev) => prev.filter((id) => id !== userId));
       });
+    };
 
-    }, 100); // check every 100ms
+    // Try immediately
+    attachListeners();
+
+    // Also attach when socket connects (handles async connection)
+    const socket = socketRef.current;
+    if (socket) {
+      socket.on('connect', attachListeners);
+    }
 
     return () => {
-      clearInterval(interval);
       const socket = socketRef.current;
       if (socket) {
         socket.off('newMessage');
         socket.off('userTyping');
         socket.off('userStoppedTyping');
+        socket.off('connect', attachListeners);
       }
     };
   }, [socketRef]);
+
+
+
+
+
+
+
 
   // ─── Auto scroll to bottom on new message ────────────────────────────────
   useEffect(() => {
