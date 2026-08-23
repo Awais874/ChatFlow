@@ -328,7 +328,11 @@ function Chat() {
                 })}
 
                 {/* ── TYPING INDICATOR ── */}
-                {typingUsers.length > 0 && (
+
+
+
+                {(typingUsers.length > 0 || true) && (
+                // {typingUsers.length > 0 && (
                   <div style={s.typingIndicator}>
                     <div style={s.typingDots}>
                       <span style={{ ...s.dot, animationDelay: '0ms' }} />
