@@ -57,39 +57,41 @@ function Chat() {
 
   // ─── Set up socket listeners whenever socket becomes available ────────────
   // This runs when socket changes from null → connected instance
-  useEffect(() => {
-    if (!socket) return; // socket not ready yet — wait
+ 
 
-    // Remove old listeners to prevent duplicates
+    
+
+    useEffect(() => {
+  if (!socket) return;
+
+  socket.off('newMessage');
+  socket.off('userTyping');
+  socket.off('userStoppedTyping');
+
+  socket.on('newMessage', (message) => {
+    setMessages((prev) => [...prev, message]);
+  });
+
+  socket.on('userTyping', ({ userId }) => {
+    console.log('✍️ Typing received from:', userId);
+    // Use functional update to avoid stale closure
+    setTypingUsers((prev) => {
+      const next = prev.includes(userId) ? prev : [...prev, userId];
+      console.log('typingUsers updated to:', next);
+      return next;
+    });
+  });
+
+  socket.on('userStoppedTyping', ({ userId }) => {
+    setTypingUsers((prev) => prev.filter((id) => id !== userId));
+  });
+
+  return () => {
     socket.off('newMessage');
     socket.off('userTyping');
     socket.off('userStoppedTyping');
-
-    // New real-time message from server
-    socket.on('newMessage', (message) => {
-      setMessages((prev) => [...prev, message]);
-    });
-
-    // Someone in the room started typing
-    socket.on('userTyping', ({ userId }) => {
-      console.log('✍️ Typing received from:', userId);
-      setTypingUsers((prev) => {
-        if (prev.includes(userId)) return prev;
-        return [...prev, userId];
-      });
-    });
-
-    // Someone stopped typing
-    socket.on('userStoppedTyping', ({ userId }) => {
-      setTypingUsers((prev) => prev.filter((id) => id !== userId));
-    });
-
-    return () => {
-      socket.off('newMessage');
-      socket.off('userTyping');
-      socket.off('userStoppedTyping');
-    };
-  }, [socket]); // re-runs when socket changes — this is the key
+  };
+}, [socket]); // re-runs when socket changes — this is the key
 
   // ─── Auto scroll to bottom on new message ────────────────────────────────
   useEffect(() => {
@@ -345,6 +347,10 @@ function Chat() {
 
                 <div ref={messagesEndRef} />
               </div>
+              {/* Debug — remove later */}
+<p style={{ fontSize: '10px', color: 'red' }}>
+  typing count: {typingUsers.length}
+</p>
 
               {/* ── INPUT ── */}
               <div style={s.inputBar}>
