@@ -32,91 +32,64 @@ const formatTime = (dateStr) => {
 
 // ─── Main Chat component ──────────────────────────────────────────────────────
 function Chat() {
-  const [conversations, setConversations]           = useState([]);
+  const [conversations, setConversations]       = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
-  const [messages, setMessages]                     = useState([]);
-  const [newMessage, setNewMessage]                 = useState('');
-  const [loading, setLoading]                       = useState(false);
-  const [sidebarOpen, setSidebarOpen]               = useState(true);
-  const [showNewConvModal, setShowNewConvModal]     = useState(false);
-  const [typingUsers, setTypingUsers]               = useState([]);
+  const [messages, setMessages]                 = useState([]);
+  const [newMessage, setNewMessage]             = useState('');
+  const [loading, setLoading]                   = useState(false);
+  const [sidebarOpen, setSidebarOpen]           = useState(true);
+  const [showNewConvModal, setShowNewConvModal] = useState(false);
+  const [typingUsers, setTypingUsers]           = useState([]);
 
   const user             = JSON.parse(localStorage.getItem('user'));
-  const socketRef        = useSocket(); // returns the REF not the value
+
+  // socket is now a STATE value — React re-renders when it becomes available
+  const socket           = useSocket();
+
   const messagesEndRef   = useRef(null);
   const inputRef         = useRef(null);
   const typingTimeoutRef = useRef(null);
-  const activeConvRef    = useRef(null); // track active conversation in real time
-
-  // Keep activeConvRef in sync with activeConversation state
-  useEffect(() => {
-    activeConvRef.current = activeConversation;
-  }, [activeConversation]);
 
   // ─── Load conversations on mount ──────────────────────────────────────────
   useEffect(() => {
     fetchConversations();
   }, []);
 
- 
+  // ─── Set up socket listeners whenever socket becomes available ────────────
+  // This runs when socket changes from null → connected instance
+  useEffect(() => {
+    if (!socket) return; // socket not ready yet — wait
 
-useEffect(() => {
-    // Wait for socket to be ready then attach listeners
-    const attachListeners = () => {
-      const socket = socketRef.current;
-      if (!socket) return;
+    // Remove old listeners to prevent duplicates
+    socket.off('newMessage');
+    socket.off('userTyping');
+    socket.off('userStoppedTyping');
 
-      // Remove any existing listeners first to prevent duplicates
+    // New real-time message from server
+    socket.on('newMessage', (message) => {
+      setMessages((prev) => [...prev, message]);
+    });
+
+    // Someone in the room started typing
+    socket.on('userTyping', ({ userId }) => {
+      console.log('✍️ Typing received from:', userId);
+      setTypingUsers((prev) => {
+        if (prev.includes(userId)) return prev;
+        return [...prev, userId];
+      });
+    });
+
+    // Someone stopped typing
+    socket.on('userStoppedTyping', ({ userId }) => {
+      setTypingUsers((prev) => prev.filter((id) => id !== userId));
+    });
+
+    return () => {
       socket.off('newMessage');
       socket.off('userTyping');
       socket.off('userStoppedTyping');
-
-      // New message from server
-      socket.on('newMessage', (message) => {
-        setMessages((prev) => [...prev, message]);
-      });
-
-      // Someone started typing
-      socket.on('userTyping', ({ userId }) => {
-        console.log('Received typing from:', userId);
-        setTypingUsers((prev) => {
-          if (prev.includes(userId)) return prev;
-          return [...prev, userId];
-        });
-      });
-
-      // Someone stopped typing
-      socket.on('userStoppedTyping', ({ userId }) => {
-        setTypingUsers((prev) => prev.filter((id) => id !== userId));
-      });
     };
-
-    // Try immediately
-    attachListeners();
-
-    // Also attach when socket connects (handles async connection)
-    const socket = socketRef.current;
-    if (socket) {
-      socket.on('connect', attachListeners);
-    }
-
-    return () => {
-      const socket = socketRef.current;
-      if (socket) {
-        socket.off('newMessage');
-        socket.off('userTyping');
-        socket.off('userStoppedTyping');
-        socket.off('connect', attachListeners);
-      }
-    };
-  }, [socketRef]);
-
-
-
-
-
-
-
+  }, [socket]); // re-runs when socket changes — this is the key
 
   // ─── Auto scroll to bottom on new message ────────────────────────────────
   useEffect(() => {
@@ -140,13 +113,10 @@ useEffect(() => {
     setTypingUsers([]);
     setLoading(true);
 
-    // Use socketRef.current so we always get the latest socket
-    const socket = socketRef.current;
+    // Join this conversation's Socket.io room
     if (socket) {
       socket.emit('joinRoom', conv._id);
       console.log('Joined room:', conv._id);
-    } else {
-      console.log('Socket not ready yet');
     }
 
     try {
@@ -163,7 +133,6 @@ useEffect(() => {
   // ─── Send a message ───────────────────────────────────────────────────────
   const sendMessage = () => {
     const text = newMessage.trim();
-    const socket = socketRef.current;
     if (!text || !activeConversation || !socket) return;
 
     socket.emit('sendMessage', {
@@ -171,7 +140,7 @@ useEffect(() => {
       text,
     });
 
-    // Stop typing indicator when message is sent
+    // Clear typing indicator on send
     socket.emit('stopTyping', activeConversation._id);
     clearTimeout(typingTimeoutRef.current);
 
@@ -183,18 +152,15 @@ useEffect(() => {
   const handleChange = (e) => {
     setNewMessage(e.target.value);
 
-    const socket = socketRef.current;
-    if (!socket || !activeConvRef.current) return;
+    if (!socket || !activeConversation) return;
 
     // Tell server this user is typing
-    socket.emit('typing', activeConvRef.current._id);
+    socket.emit('typing', activeConversation._id);
 
-    // Clear previous timeout and reset
+    // Reset the stop-typing timer on every keystroke
     clearTimeout(typingTimeoutRef.current);
-
-    // After 2 seconds of no typing — emit stopTyping
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('stopTyping', activeConvRef.current._id);
+      socket.emit('stopTyping', activeConversation._id);
     }, 2000);
   };
 
@@ -217,7 +183,6 @@ useEffect(() => {
   const isOwnMessage = (msg) =>
     msg.senderId === user?.id || msg.senderId?._id === user?.id;
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div style={s.root}>
 
@@ -338,7 +303,10 @@ useEffect(() => {
                     >
                       {!own && (
                         <div style={s.msgAvatar}>
-                          {showName ? <Avatar name={senderName} size={30} /> : <div style={{ width: 30 }} />}
+                          {showName
+                            ? <Avatar name={senderName} size={30} />
+                            : <div style={{ width: 30 }} />
+                          }
                         </div>
                       )}
                       <div style={{ maxWidth: '62%' }}>

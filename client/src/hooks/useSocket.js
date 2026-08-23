@@ -1,37 +1,50 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 
+// Singleton — one socket instance shared across renders
+let socketInstance = null;
+
 const useSocket = () => {
-  const socketRef = useRef(null);
+  // Store in STATE so React re-renders when socket connects
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    socketRef.current = io('https://chatflow-backend-lj6n.onrender.com', {
-      auth: { token }
+    // Create socket only once
+    if (!socketInstance) {
+      socketInstance = io('https://chatflow-backend-lj6n.onrender.com', {
+        auth: { token }
+      });
+    }
+
+    // If already connected, set state immediately
+    if (socketInstance.connected) {
+      setSocket(socketInstance);
+    }
+
+    // When socket connects, update state — triggers React re-render
+    socketInstance.on('connect', () => {
+      console.log('😀 Socket connected:', socketInstance.id);
+      setSocket(socketInstance);
     });
 
-    socketRef.current.on('connect', () => {
-      console.log('😀 Socket connected:', socketRef.current.id);
-    });
-
-    socketRef.current.on('disconnect', () => {
+    socketInstance.on('disconnect', () => {
       console.log('☹️ Socket disconnected');
     });
 
-    socketRef.current.on('connect_error', (err) => {
+    socketInstance.on('connect_error', (err) => {
       console.log('❌ Socket error:', err.message);
     });
 
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
+      // Don't disconnect — keep singleton alive across re-renders
     };
   }, []);
 
-  // Return the REF OBJECT — not ref.current
-  // This ensures components always read the latest socket value
-  return socketRef;
+  // Return socket VALUE (from state) — React re-renders when this changes
+  return socket;
 };
 
 export default useSocket;
