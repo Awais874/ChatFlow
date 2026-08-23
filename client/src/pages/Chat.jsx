@@ -64,9 +64,41 @@ function Chat() {
     socket.off('userTyping');
     socket.off('userStoppedTyping');
 
+    // socket.on('newMessage', (message) => {
+    //   setMessages((prev) => [...prev, message]);
+    // });
+
+
+
+
+
+
+
+
+
+
+
+
     socket.on('newMessage', (message) => {
-      setMessages((prev) => [...prev, message]);
-    });
+  // Add message to chat window if it belongs to active conversation
+  setMessages((prev) => [...prev, message]);
+
+  // Update last message preview in sidebar
+  setConversations((prev) =>
+    prev.map((conv) =>
+      conv._id === message.conversationId
+        ? { ...conv, lastMessage: message.text }
+        : conv
+    )
+  );
+});
+
+
+
+
+
+
+
 
     socket.on('userTyping', ({ userId }) => {
       setTypingUsers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));

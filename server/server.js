@@ -54,10 +54,25 @@ io.use((socket, next) => {
 });
 
 // Socket.io connection handler
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   console.log(`✅ User connected: ${socket.user.userId} | Socket ID: ${socket.id}`);
 
-  // Join a conversation room so user receives messages for it
+  // Auto-join all conversation rooms this user belongs to
+  // So they receive real-time messages without needing to click each conversation first
+  try {
+    const userConversations = await Conversation.find({
+      participants: socket.user.userId
+    }).select('_id');
+
+    userConversations.forEach((conv) => {
+      socket.join(conv._id.toString());
+      console.log(`Auto-joined room: ${conv._id}`);
+    });
+  } catch (err) {
+    console.error('Failed to auto-join rooms:', err.message);
+  }
+
+  // Manually join a specific conversation room when user opens it
   socket.on('joinRoom', (conversationId) => {
     socket.join(conversationId);
     console.log(`User ${socket.user.userId} joined room: ${conversationId}`);
