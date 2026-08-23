@@ -72,6 +72,7 @@ const typingTimeoutRef = useRef(null);
     
   // Someone started typing:  add them to typingUsers list
   socket.on('userTyping', ({ userId }) => {
+    console.log('Received typing from:', userId);
     setTypingUsers((prev) => {
       if (prev.includes(userId)) return prev;
       return [...prev, userId];
@@ -385,6 +386,11 @@ if (socket && activeConversation) {
                   value={newMessage}
                   onChange={(e) => {
   setNewMessage(e.target.value);
+
+
+  console.log('Emitting typing event for:', activeConversation._id);
+socket.emit('typing', activeConversation._id);
+
 
   // Tell the server this user is typing
   if (socket && activeConversation) {
